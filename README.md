@@ -13,15 +13,3 @@ bun run dev
 ```
 
 Repository: https://github.com/YusufVyce/error-parser-solution-guide
-
-## Analyzer
-
-The app now includes a semantic root-cause analysis engine that reasons about async behavior, control flow, and data flow instead of relying solely on keyword matching.
-
-## Testing
-
-Run the analyzer test suite locally:
-
-```bash
-npm test
-```

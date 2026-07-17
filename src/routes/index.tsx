@@ -18,12 +18,6 @@ type Analysis = {
   causes: { percent: number; text: string }[];
   fixes: string[];
   example?: string;
-  confidence?: number;
-  evidence?: string[];
-  executionPath?: string[];
-  alternatives?: string[];
-  why?: string;
-  regressions?: string[];
 };
 
 type MatchResult = {
@@ -72,12 +66,9 @@ function ErrorParserPage() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800);
   }
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-
-  async function triggerAnalysis() {
+  function triggerAnalysis() {
     const log = logText.trim();
     const code = codeText.trim();
-    console.log(`[ui] triggerAnalysis START: log=${log.length} chars, code=${code.length} chars`);
     if (!log && !code) {
       setErrorFlash(true);
       errorRef.current?.focus();
@@ -86,62 +77,35 @@ function ErrorParserPage() {
       return;
     }
 
-    setIsAnalyzing(true);
-    console.log(`[ui] isAnalyzing=true, calling analyzer`);
-    try {
-      const selected = platform === "auto" ? undefined : platform;
-      const startTime = performance.now();
-      const analysis = await analyzeErrorAndCode(log, code, selected);
-      const elapsed = performance.now() - startTime;
-      console.log(`[ui] analyzer returned after ${elapsed}ms`);
+    const selected = platform === "auto" ? undefined : platform;
+    const analysis = analyzeErrorAndCode(log, code, selected);
 
-      // Watchdog / error diagnostics from engine
-      if ((analysis as any).__timeout) {
-        console.error(`[ui] TIMEOUT detected`);
-        showToast((analysis as any).__timeoutMessage || "Analysis timed out", "error");
-      }
-      if ((analysis as any).__workerError || (analysis as any).__postError) {
-        console.error(`[ui] ERROR detected`);
-        const msg = (analysis as any).__workerError ? (analysis as any).message : (analysis as any).__postError;
-        showToast(`Analysis failed: ${msg ?? "unknown"}`, "error");
-      }
+    if (analysis.matched) {
+      const matchData: MatchResult = {
+        entry: {
+          id: analysis.ruleId,
+          title: analysis.title,
+          platform: analysis.platform,
+        },
+        analysis: {
+          explanation: analysis.rootCause,
+          causes: [{ percent: 100, text: analysis.rootCause }],
+          fixes: [analysis.fix],
+          example: analysis.correctedExample,
+        },
+      };
 
-      if (analysis.matched) {
-        const matchData: MatchResult = {
-          entry: {
-            id: analysis.ruleId,
-            title: analysis.title,
-            platform: analysis.platform,
-          },
-          analysis: {
-            explanation: analysis.rootCause,
-            causes: [{ percent: 100, text: analysis.rootCause }],
-            fixes: [analysis.fix],
-            example: analysis.correctedExample,
-            confidence: analysis.confidence,
-            evidence: analysis.evidence,
-            executionPath: analysis.executionPath,
-            alternatives: analysis.alternatives,
-            why: analysis.why,
-            regressions: analysis.possibleRegressions,
-          },
-        };
-        if ((analysis as any).timings) (matchData.analysis as any).timings = (analysis as any).timings;
-        setResult({
-          kind: "match",
-          data: matchData,
-          analysis: matchData.analysis,
-          logSnapshot: log || code,
-        });
-        setAnimateResult(false);
-        requestAnimationFrame(() => setAnimateResult(true));
-      } else {
-        setResult({ kind: "generic" });
-        setTimeout(() => genericRef.current?.focus(), 0);
-      }
-    } finally {
-      console.log(`[ui] clearing isAnalyzing`);
-      setIsAnalyzing(false);
+      setResult({
+        kind: "match",
+        data: matchData,
+        analysis: matchData.analysis,
+        logSnapshot: log || code,
+      });
+      setAnimateResult(false);
+      requestAnimationFrame(() => setAnimateResult(true));
+    } else {
+      setResult({ kind: "generic" });
+      setTimeout(() => genericRef.current?.focus(), 0);
     }
   }
 
@@ -153,48 +117,29 @@ function ErrorParserPage() {
     setPlatform("auto");
     showToast(`Loaded ${capitalize(ex.platform)} example`);
     if (triggerAfter) {
-      setTimeout(async () => {
-        const analysis = await analyzeErrorAndCode(ex.error, ex.code, "auto");
-        if ((analysis as any).__timeout) {
-          showToast((analysis as any).__timeoutMessage || "Analysis timed out", "error");
-        }
-        if ((analysis as any).__workerError || (analysis as any).__postError) {
-          const msg = (analysis as any).__workerError ? (analysis as any).message : (analysis as any).__postError;
-          showToast(`Analysis failed: ${msg ?? "unknown"}`, "error");
-        }
-        if (analysis.matched) {
-          const matchData: MatchResult = {
-            entry: {
-              id: analysis.ruleId,
-              title: analysis.title,
-              platform: analysis.platform,
-            },
-            analysis: {
-              explanation: analysis.rootCause,
-              causes: [{ percent: 100, text: analysis.rootCause }],
-              fixes: [analysis.fix],
-              example: analysis.correctedExample,
-              confidence: analysis.confidence,
-              evidence: analysis.evidence,
-              executionPath: analysis.executionPath,
-              alternatives: analysis.alternatives,
-              why: analysis.why,
-              regressions: analysis.possibleRegressions,
-            },
-          };
-          if ((analysis as any).timings) (matchData.analysis as any).timings = (analysis as any).timings;
-          setResult({
-            kind: "match",
-            data: matchData,
-            analysis: matchData.analysis,
-            logSnapshot: ex.error,
-          });
-          setAnimateResult(false);
-          requestAnimationFrame(() => setAnimateResult(true));
-        } else {
-          showToast("No match produced by analyzer", "error");
-          setResult({ kind: "generic" });
-        }
+      setTimeout(() => {
+        const analysis = analyzeErrorAndCode(ex.error, ex.code, "auto");
+        const matchData: MatchResult = {
+          entry: {
+            id: analysis.ruleId,
+            title: analysis.title,
+            platform: analysis.platform,
+          },
+          analysis: {
+            explanation: analysis.rootCause,
+            causes: [{ percent: 100, text: analysis.rootCause }],
+            fixes: [analysis.fix],
+            example: analysis.correctedExample,
+          },
+        };
+        setResult({
+          kind: "match",
+          data: matchData,
+          analysis: matchData.analysis,
+          logSnapshot: ex.error,
+        });
+        setAnimateResult(false);
+        requestAnimationFrame(() => setAnimateResult(true));
       }, 0);
     }
   }
@@ -245,7 +190,7 @@ function ErrorParserPage() {
     ? result.data.entry
     : { id: "unknown", title: "Unknown error", platform: "roblox" as Platform };
 
-  const logSnapshot = result?.kind === "match" ? result.logSnapshot : "";
+  const logSnapshot = result?.logSnapshot ?? "";
 
   const metaLabel = useMemo(() => {
     if (result?.kind !== "match") return "";
@@ -415,11 +360,11 @@ function ErrorParserPage() {
               <div className="flex items-center gap-2 pt-1 flex-wrap">
                 <button
                   type="button"
-                  disabled={!canAnalyze || isAnalyzing}
+                  disabled={!canAnalyze}
                   onClick={triggerAnalysis}
                   className="ep-cta px-5 py-2.5 rounded-lg text-xs font-semibold tracking-wide"
                 >
-                  {isAnalyzing ? "Analyzing…" : "Analyze Root Cause →"}
+                  Analyze Root Cause →
                 </button>
                 <span className="text-[10px] text-zinc-600 hidden sm:inline font-mono">
                   ⌘/Ctrl + ↵
@@ -481,7 +426,7 @@ function ErrorParserPage() {
                     <div className="text-right shrink-0">
                       <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full font-medium">
                         <span className="ep-dot" />
-                        Semantic analysis
+                        Pattern match
                       </div>
                       <div
                         className="text-[10px] text-zinc-600 mt-2 font-mono max-w-[220px] truncate"
@@ -504,23 +449,6 @@ function ErrorParserPage() {
                       <p className="text-sm text-zinc-300 leading-relaxed">
                         {analysis.explanation || "No analysis available."}
                       </p>
-                      {analysis.confidence !== undefined && (
-                        <div className="text-xs text-emerald-300 font-semibold">
-                          Confidence: {analysis.confidence}%
-                        </div>
-                      )}
-                      {analysis.why && (
-                        <div className="text-xs text-zinc-500">
-                          Why: {analysis.why}
-                        </div>
-                      )}
-                      {(analysis as any).timings && (
-                        <div className="text-xs text-zinc-500 mt-1">
-                          Timings: {Object.entries((analysis as any).timings)
-                            .map(([k, v]) => `${k}: ${Math.round(v as number)}ms`)
-                            .join(" • ")}
-                        </div>
-                      )}
                     </section>
 
                     <section className="space-y-2">
@@ -534,22 +462,9 @@ function ErrorParserPage() {
                       </div>
                     </section>
 
-                    {analysis.evidence?.length ? (
-                      <section className="space-y-2">
-                        <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
-                          <span className="ep-step">3</span> Evidence
-                        </h3>
-                        <ul className="text-sm text-zinc-300 space-y-2 leading-relaxed pl-1 list-disc list-inside">
-                          {analysis.evidence.map((e, i) => (
-                            <li key={i}>{e}</li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
-
                     <section className="space-y-2">
                       <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
-                        <span className="ep-step">4</span> How to fix it
+                        <span className="ep-step">3</span> How to fix it
                       </h3>
                       <ol className="text-sm text-zinc-300 space-y-2 leading-relaxed pl-1">
                         {(analysis.fixes ?? []).map((f, i) => (
@@ -562,19 +477,6 @@ function ErrorParserPage() {
                         ))}
                       </ol>
                     </section>
-
-                    {analysis.alternatives?.length ? (
-                      <section className="space-y-2 border-t border-emerald-500/10 pt-5">
-                        <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
-                          <span className="ep-step">5</span> Alternative hypotheses
-                        </h3>
-                        <ul className="text-sm text-zinc-300 space-y-2 leading-relaxed pl-1 list-disc list-inside">
-                          {analysis.alternatives.map((alternative, i) => (
-                            <li key={i}>{alternative}</li>
-                          ))}
-                        </ul>
-                      </section>
-                    ) : null}
 
                     {analysis.example && (
                       <section className="space-y-2 border-t border-emerald-500/10 pt-5">
