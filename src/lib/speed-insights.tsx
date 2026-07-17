@@ -1,36 +1,28 @@
-import { useEffect } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 
-// Safe wrapper that attempts a dynamic import of the Vercel Speed Insights
-// integration. This avoids static-importing Next-specific module code which
-// could break non-Next apps. The wrapper is a no-op if the package or the
-// exported symbol is not available.
+// Safe wrapper that loads the Vercel Speed Insights React component lazily.
+// This avoids a hard dependency on server-only or Next-specific runtime code.
 export function SpeedInsightsWrapper(): null {
+  const [Component, setComponent] = useState<ComponentType | null>(null);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const mod = await import("@vercel/speed-insights/next");
-        // Some Speed Insights exports are components or initializers; try
-        // to call any exported initializer function named `SpeedInsights`.
-        const maybe = (mod as any).SpeedInsights;
-        if (mounted && typeof maybe === "function") {
-          try {
-            // Call without args — the package will no-op if not compatible.
-            maybe();
-          } catch (e) {
-            // swallow errors to avoid breaking the app
-            // eslint-disable-next-line no-console
-            console.debug("SpeedInsights initializer failed:", e);
-          }
+        const mod = await import("@vercel/speed-insights/react");
+        const LoadedComponent = (mod as any).SpeedInsights || (mod as any).default;
+        if (mounted && LoadedComponent) {
+          setComponent(() => LoadedComponent as ComponentType);
         }
-      } catch (e) {
-        // dynamic import failed — do nothing
+      } catch {
+        // ignore missing package or incompatible environment
       }
     })();
+
     return () => {
       mounted = false;
     };
   }, []);
 
-  return null;
+  return Component ? <Component /> : null;
 }

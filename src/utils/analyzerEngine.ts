@@ -43,7 +43,10 @@ export function analyzeErrorAndCode(
 
   // If no log provided but code exists, attempt code-only analysis using rule heuristics.
   if (codeText && codeText.trim().length > 0) {
-    const detected = (platformFilter as Platform) || detectPlatform(codeText) || null;
+    const detected =
+      platformFilter === "auto" || platformFilter === undefined
+        ? detectPlatform(codeText)
+        : platformFilter;
     const candidates = detected
       ? ERROR_DICT.filter((e) => e.platform === detected)
       : ERROR_DICT;
