@@ -8,7 +8,8 @@ export type { Platform } from "@/lib/error-parser";
 export type { AnalyzerResult };
 
 let worker: Worker | null = null;
-const pending = new Map<string, (res: AnalyzerResult) => void>();
+type PendingEntry = { resolve: (r: AnalyzerResult) => void; timer?: number };
+const pending = new Map<string, PendingEntry>();
 
 function initWorker() {
   if (typeof window === "undefined" || typeof Worker === "undefined") return null;
@@ -19,10 +20,23 @@ function initWorker() {
     // @ts-ignore
     worker = new Worker(new URL("../lib/analyzer/worker.ts", import.meta.url), { type: "module" });
     worker.addEventListener("message", (ev: MessageEvent) => {
-      const { id, result } = ev.data as { id: string; result: AnalyzerResult };
-      const resolver = pending.get(id);
-      if (resolver) {
-        resolver(result);
+      const { id, result } = ev.data as { id: string; result: AnalyzerResult | any };
+      const entry = pending.get(id);
+      if (entry) {
+        try {
+          if (entry.timer) clearTimeout(entry.timer);
+        } catch {}
+        entry.resolve(result as AnalyzerResult);
+        pending.delete(id);
+      }
+    });
+    worker.addEventListener("error", (err) => {
+      console.error("Worker runtime error:", err);
+      for (const [id, entry] of pending.entries()) {
+        try {
+          if (entry.timer) clearTimeout(entry.timer);
+        } catch {}
+        entry.resolve({ matched: false, __workerError: true, message: "Worker error" } as any);
         pending.delete(id);
       }
     });
@@ -71,7 +85,28 @@ export async function analyzeErrorAndCode(
 
   return await new Promise<AnalyzerResult>((resolve) => {
     const id = String(Date.now()) + Math.random();
-    pending.set(id, resolve);
-    w.postMessage({ id, logText, codeText, platform: platformFilter });
+    const timer = setTimeout(() => {
+      if (pending.has(id)) {
+        pending.delete(id);
+        const timeoutResult: AnalyzerResult = { matched: false } as any;
+        (timeoutResult as any).__timeout = true;
+        (timeoutResult as any).__timeoutMessage = `Analysis timed out after 5000ms (id=${id})`;
+        resolve(timeoutResult);
+        try {
+          w.postMessage({ id, cmd: "cancel" });
+        } catch {}
+      }
+    }, 5000) as unknown as number;
+
+    pending.set(id, { resolve, timer });
+    try {
+      w.postMessage({ id, logText, codeText, platform: platformFilter });
+    } catch (e) {
+      if (timer) clearTimeout(timer as any);
+      pending.delete(id);
+      const errRes: AnalyzerResult = { matched: false } as any;
+      (errRes as any).__postError = String(e);
+      resolve(errRes);
+    }
   });
 }

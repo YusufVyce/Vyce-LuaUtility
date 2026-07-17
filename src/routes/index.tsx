@@ -90,6 +90,15 @@ function ErrorParserPage() {
       const selected = platform === "auto" ? undefined : platform;
       const analysis = await analyzeErrorAndCode(log, code, selected);
 
+      // Watchdog / error diagnostics from engine
+      if ((analysis as any).__timeout) {
+        showToast((analysis as any).__timeoutMessage || "Analysis timed out", "error");
+      }
+      if ((analysis as any).__workerError || (analysis as any).__postError) {
+        const msg = (analysis as any).__workerError ? (analysis as any).message : (analysis as any).__postError;
+        showToast(`Analysis failed: ${msg ?? "unknown"}`, "error");
+      }
+
       if (analysis.matched) {
         const matchData: MatchResult = {
           entry: {
@@ -143,6 +152,13 @@ function ErrorParserPage() {
     if (triggerAfter) {
       setTimeout(async () => {
         const analysis = await analyzeErrorAndCode(ex.error, ex.code, "auto");
+        if ((analysis as any).__timeout) {
+          showToast((analysis as any).__timeoutMessage || "Analysis timed out", "error");
+        }
+        if ((analysis as any).__workerError || (analysis as any).__postError) {
+          const msg = (analysis as any).__workerError ? (analysis as any).message : (analysis as any).__postError;
+          showToast(`Analysis failed: ${msg ?? "unknown"}`, "error");
+        }
         const matchData: MatchResult = {
           entry: {
             id: analysis.ruleId,
