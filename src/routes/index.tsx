@@ -18,6 +18,12 @@ type Analysis = {
   causes: { percent: number; text: string }[];
   fixes: string[];
   example?: string;
+  confidence?: number;
+  evidence?: string[];
+  executionPath?: string[];
+  alternatives?: string[];
+  why?: string;
+  regressions?: string[];
 };
 
 type MatchResult = {
@@ -426,7 +432,7 @@ function ErrorParserPage() {
                     <div className="text-right shrink-0">
                       <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full font-medium">
                         <span className="ep-dot" />
-                        Pattern match
+                        Semantic analysis
                       </div>
                       <div
                         className="text-[10px] text-zinc-600 mt-2 font-mono max-w-[220px] truncate"
@@ -449,6 +455,16 @@ function ErrorParserPage() {
                       <p className="text-sm text-zinc-300 leading-relaxed">
                         {analysis.explanation || "No analysis available."}
                       </p>
+                      {analysis.confidence !== undefined && (
+                        <div className="text-xs text-emerald-300 font-semibold">
+                          Confidence: {analysis.confidence}%
+                        </div>
+                      )}
+                      {analysis.why && (
+                        <div className="text-xs text-zinc-500">
+                          Why: {analysis.why}
+                        </div>
+                      )}
                     </section>
 
                     <section className="space-y-2">
@@ -462,9 +478,22 @@ function ErrorParserPage() {
                       </div>
                     </section>
 
+                    {analysis.evidence?.length ? (
+                      <section className="space-y-2">
+                        <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
+                          <span className="ep-step">3</span> Evidence
+                        </h3>
+                        <ul className="text-sm text-zinc-300 space-y-2 leading-relaxed pl-1 list-disc list-inside">
+                          {analysis.evidence.map((e, i) => (
+                            <li key={i}>{e}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
+
                     <section className="space-y-2">
                       <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
-                        <span className="ep-step">3</span> How to fix it
+                        <span className="ep-step">4</span> How to fix it
                       </h3>
                       <ol className="text-sm text-zinc-300 space-y-2 leading-relaxed pl-1">
                         {(analysis.fixes ?? []).map((f, i) => (
@@ -477,6 +506,19 @@ function ErrorParserPage() {
                         ))}
                       </ol>
                     </section>
+
+                    {analysis.alternatives?.length ? (
+                      <section className="space-y-2 border-t border-emerald-500/10 pt-5">
+                        <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
+                          <span className="ep-step">5</span> Alternative hypotheses
+                        </h3>
+                        <ul className="text-sm text-zinc-300 space-y-2 leading-relaxed pl-1 list-disc list-inside">
+                          {analysis.alternatives.map((alternative, i) => (
+                            <li key={i}>{alternative}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
 
                     {analysis.example && (
                       <section className="space-y-2 border-t border-emerald-500/10 pt-5">
