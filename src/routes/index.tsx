@@ -249,6 +249,7 @@ function ErrorParserPage() {
             <span className="text-zinc-200">exact root cause</span> — not
             generic guesses.
           </p>
+          <div className="mt-3 text-xs text-zinc-500">Made by YusufVyce</div>
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] text-zinc-500">
             <span className="flex items-center gap-1.5">
               <span className="text-emerald-400">✓</span> 100% client-side
@@ -544,7 +545,7 @@ function ErrorParserPage() {
 
         <footer className="relative z-10 w-full max-w-5xl mt-14 text-center text-[11px] text-zinc-600 flex items-center justify-center gap-2">
           <span className="ep-dot" />
-          Made by yusufvyce
+          Made by YusufVyce
         </footer>
       </div>
     </>
