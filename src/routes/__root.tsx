@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { name: "theme-color", content: "#0b0f11" },
-      { title: "Error Parser & Solution Guide — Dynamic Root Cause Analyzer" },
+      { title: "Error Solution Guide" },
       {
         name: "description",
         content:
@@ -87,7 +87,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         property: "og:title",
-        content: "Error Parser & Solution Guide — Dynamic Root Cause Analyzer",
+        content: "Error Solution Guide",
       },
       {
         property: "og:description",

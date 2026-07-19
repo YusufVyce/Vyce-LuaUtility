@@ -252,11 +252,11 @@ function ErrorParserPage() {
     </div>
 
     <h1 className="serif-title text-4xl md:text-6xl leading-[1.05] text-zinc-50">
-      Got a broken code?
+      Got a error?
       <br />
       Let&apos;s{" "}
       <span className="italic bg-gradient-to-r from-emerald-300 to-teal-400 bg-clip-text text-transparent">
-        parse it.
+        FIX it.
       </span>
     </h1>
 
@@ -274,7 +274,7 @@ function ErrorParserPage() {
     <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] text-zinc-500">
       <span className="flex items-center gap-1.5">
         <span className="text-emerald-400">✓</span>
-        100% Studio Integrated
+        90% Fixer
       </span>
 
       <span className="flex items-center gap-1.5">
