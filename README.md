@@ -1,6 +1,6 @@
 <div align="center">
   <br>
-  <h1>Error Parser & Solution Guide</h1>
+  <h1>Vyce LuaUtility</h1>
   <p><b>Dynamic root cause analyzer for Roblox Scripts.</b></p>
   <p><i>Stop guessing. Start fixing.</i></p>
   
@@ -38,7 +38,7 @@ Getting started with the local development environment:
 
 ```bash
 # Clone the repository
-git clone [https://github.com/YusufVyce/error-parser-solution-guide.git](https://github.com/YusufVyce/error-parser-solution-guide.git)
+git clone [https://github.com/YusufVyce/Vyce-LuaUtility.git](https://github.com/YusufVyce/Vyce-LuaUtility.git)
 
 # Install dependencies
 bun install
