@@ -34,7 +34,8 @@ export function matchRule(input: string, rules: MatchRule[]): MatchResult | null
       }
     }
 
-    const confidence = Math.round((score / rule.keywords.length) * 100);
+    const confidence =
+      rule.keywords.length === 0 ? 0 : Math.round((score / rule.keywords.length) * 100);
 
     if (!best || confidence > best.confidence) {
       best = {

@@ -4,12 +4,21 @@ export interface ScanResult {
   waitForChild: string[];
 }
 
+/**
+ * Lightweight line-based scan of Lua source. Not a real parser — it uses
+ * regexes to pick out `local x = ...` declarations, `:WaitForChild(` calls,
+ * and dotted property-access chains (`a.b.c`) for the heuristics in
+ * `rules.ts` to reason about. Intentionally cheap (single pass, no AST) so
+ * it stays fast on large scripts.
+ */
 export function scanCode(code: string): ScanResult {
   const result: ScanResult = {
     variables: {},
     propertyAccess: [],
     waitForChild: [],
   };
+
+  if (!code) return result;
 
   const lines = code.split(/\r?\n/);
 

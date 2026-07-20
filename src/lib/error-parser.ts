@@ -104,12 +104,20 @@ function normalize(text: string): string {
     .trim();
 }
 
+/**
+ * Fraction of `b`'s words that also appear in `a`, used as a cheap
+ * bag-of-words similarity score for fuzzy alias matching. Returns 0 for an
+ * empty `b` rather than dividing by zero.
+ */
 function similarity(a: string, b: string): number {
   const aWords = normalize(a).split(" ");
   const bWords = normalize(b).split(" ");
 
-  let matches = 0;
+  if (bWords.length === 0 || (bWords.length === 1 && bWords[0] === "")) {
+    return 0;
+  }
 
+  let matches = 0;
   for (const word of bWords) {
     if (aWords.includes(word)) {
       matches++;
@@ -119,61 +127,57 @@ function similarity(a: string, b: string): number {
   return matches / bWords.length;
 }
 
-export function findMatch(
-  logText: string,
-): MatchResult | null {
+/** Alias similarity at or above this threshold counts as a match. */
+const ALIAS_MATCH_THRESHOLD = 0.6;
 
-  // 1. Önce normal regex kontrolü
+/**
+ * Finds the best-matching ErrorEntry for a raw Roblox log/error message.
+ *
+ * Matching happens in two passes:
+ *   1. Exact regex `pattern` match against every entry — cheap and precise,
+ *      so it always wins when available (confidence 100).
+ *   2. If no pattern matched, fall back to fuzzy word-overlap similarity
+ *      against each entry's `aliases`, keeping the best-scoring candidate
+ *      above ALIAS_MATCH_THRESHOLD.
+ */
+export function findMatch(logText: string): MatchResult | null {
+  if (!logText || !logText.trim()) return null;
+
+  // 1. Exact regex pattern match first — precise and unambiguous.
   for (const entry of ERROR_DICT) {
-
     const match = logText.match(entry.pattern);
-
     if (match) {
       return {
-  entry,
-  match: match[0],
-
-  confidence: 100,
-  matchType: "pattern",
-};
+        entry,
+        match: match[0],
+        confidence: 100,
+        matchType: "pattern",
+      };
     }
-
   }
 
-  // 2. Eğer regex bulamazsa alias'lara bak
+  // 2. No pattern matched — fall back to fuzzy alias similarity.
   let bestMatch: MatchResult | null = null;
   let bestScore = 0;
 
   for (const entry of ERROR_DICT) {
-
     if (!entry.aliases) continue;
 
     for (const alias of entry.aliases) {
-
       const score = similarity(logText, alias);
-
       if (score > bestScore) {
         bestScore = score;
-
         bestMatch = {
-  entry,
-  match: alias,
-
-  confidence: Math.round(score * 100),
-  matchType: "alias",
-};
+          entry,
+          match: alias,
+          confidence: Math.round(score * 100),
+          matchType: "alias",
+        };
       }
-
     }
-
   }
 
-  // %60 ve üzeri benzerlik yeterli
-  if (bestScore >= 0.6) {
-    return bestMatch;
-  }
-
-  return null;
+  return bestScore >= ALIAS_MATCH_THRESHOLD ? bestMatch : null;
 }
 
 export const EXAMPLES: {

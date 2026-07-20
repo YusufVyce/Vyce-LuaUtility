@@ -42,9 +42,10 @@ function ErrorParserPage() {
   const [logText, setLogText] = useState("");
   const [codeText, setCodeText] = useState("");
   const [result, setResult] = useState<
+    | { kind: "idle" }
     | { kind: "match"; data: MatchResult; analysis: Analysis; logSnapshot: string }
     | { kind: "generic" }
-  >({ kind: "generic" });
+  >({ kind: "idle" });
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [errorFlash, setErrorFlash] = useState(false);
   const [animateResult, setAnimateResult] = useState(false);
@@ -68,17 +69,13 @@ function ErrorParserPage() {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800);
   }
 
-  function triggerAnalysis() {
-    const log = logText.trim();
-    const code = codeText.trim();
-    if (!log && !code) {
-      setErrorFlash(true);
-      errorRef.current?.focus();
-      showToast("Paste an error message or code first", "error");
-      setTimeout(() => setErrorFlash(false), 900);
-      return;
-    }
-
+  /**
+   * Runs the analyzer against a given log/code pair and applies the result
+   * to state. Shared by the main "Analyze" button and "Insert Example" (with
+   * auto-run) so the two entry points can't drift out of sync with each
+   * other, as they had before this was extracted.
+   */
+  function runAnalysis(log: string, code: string) {
     const analysis = analyzeErrorAndCode(log, code);
 
     if (analysis.matched) {
@@ -111,8 +108,28 @@ function ErrorParserPage() {
       requestAnimationFrame(() => setAnimateResult(true));
     } else {
       setResult({ kind: "generic" });
+      // If the analyzer hit an internal problem (as opposed to just finding
+      // no match), surface that distinctly rather than silently treating it
+      // the same as "no match found".
+      if (analysis.error) {
+        showToast(analysis.error, "error");
+      }
       setTimeout(() => genericRef.current?.focus(), 0);
     }
+  }
+
+  function triggerAnalysis() {
+    const log = logText.trim();
+    const code = codeText.trim();
+    if (!log && !code) {
+      setErrorFlash(true);
+      errorRef.current?.focus();
+      showToast("Paste an error message or code first", "error");
+      setTimeout(() => setErrorFlash(false), 900);
+      return;
+    }
+
+    runAnalysis(log, code);
   }
 
   function insertExample(triggerAfter = false) {
@@ -122,47 +139,14 @@ function ErrorParserPage() {
     setCodeText(ex.code);
     showToast("Loaded Roblox Script example");
     if (triggerAfter) {
-      setTimeout(() => {
-        const analysis = analyzeErrorAndCode(ex.error, ex.code);
-        
-        if (analysis.matched) {
-          const matchData: MatchResult = {
-            entry: {
-              id: analysis.ruleId,
-              title: analysis.title,
-            },
-            analysis: {
-              explanation: analysis.rootCause,
-              causes: analysis.causes || [{ percent: 100, text: analysis.rootCause }],
-              fixes: analysis.fixes || [analysis.fix],
-              example: analysis.correctedExample,
-
-              severity: analysis.severity,
-              confidence: analysis.confidence,
-
-              codeInsights: analysis.codeInsights,
-              deprecatedApis: analysis.deprecatedApis,
-            },
-          };
-          setResult({
-            kind: "match",
-            data: matchData,
-            analysis: matchData.analysis,
-            logSnapshot: ex.error,
-          });
-          setAnimateResult(false);
-          requestAnimationFrame(() => setAnimateResult(true));
-        } else {
-          setResult({ kind: "generic" });
-        }
-      }, 0);
+      setTimeout(() => runAnalysis(ex.error, ex.code), 0);
     }
   }
 
   function clearAll() {
     setLogText("");
     setCodeText("");
-    setResult({ kind: "generic" });
+    setResult({ kind: "idle" });
     errorRef.current?.focus();
   }
 
@@ -383,7 +367,7 @@ function ErrorParserPage() {
               className="lg:col-span-7 relative min-h-[420px]"
               aria-live="polite"
             >
-              {!result && (
+              {result.kind === "idle" && (
                 <div className="ep-card p-12 text-center space-y-4 border-dashed">
                   <div className="mx-auto w-14 h-14 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-center text-2xl text-emerald-400 font-mono">
                     {"{ }"}

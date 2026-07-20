@@ -7,7 +7,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
 
-    /* Path Alias Ayarları (Hatanı çözen kısım burası) */
+    /* Path alias configuration (resolves the @/ import alias) */
     "baseUrl": ".", 
     "paths": {
       "@/*": ["./src/*"]

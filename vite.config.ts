@@ -4,13 +4,13 @@ export default defineConfig({
   tanstackStart: {
     server: { entry: "server" },
   },
-  // Özel Vite ayarlarını buraya ekliyoruz
+  // Project-specific Vite overrides go here.
   vite: {
     resolve: {
       alias: {
         "@": "/src",
       },
     },
-    // Gerekirse buraya başka Vite ayarları (proxy, define vb.) gelebilir
+    // Add further Vite config (proxy, define, etc.) here as needed.
   },
 });

@@ -72,6 +72,28 @@ export const DATASTORE_ERROR: ErrorEntry = {
     }
 
 
+    if (/studioaccesstoapisnotallowed/i.test(logText)) {
+
+      causes.push({
+        percent: 99,
+        text: "API access is not enabled in Roblox Studio. DataStore calls require API access to be enabled.",
+      });
+
+      causes.push({
+        percent: 1,
+        text: "Studio security settings are blocking external requests.",
+      });
+
+      fixes.push(
+        "Open Game Settings → Security → Enable Studio Access to API Services."
+      );
+
+      example =
+`-- In Roblox Studio:
+-- Game Settings → Security →
+-- Enable "Allow HTTP Requests" and
+-- "Enable Studio Access to API Services"`;
+
     }
 
     else if (/too many requests|request was throttled/i.test(logText)) {

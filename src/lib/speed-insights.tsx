@@ -1,8 +1,8 @@
-import { useEffect, useState, type ComponentType } from "react";
+import React, { useEffect, useState, type ComponentType } from "react";
 
 // Safe wrapper that loads the Vercel Speed Insights React component lazily.
 // This avoids a hard dependency on server-only or Next-specific runtime code.
-export function SpeedInsightsWrapper(): null {
+export function SpeedInsightsWrapper(): React.ReactNode {
   const [Component, setComponent] = useState<ComponentType | null>(null);
 
   useEffect(() => {

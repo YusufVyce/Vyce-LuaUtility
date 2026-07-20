@@ -76,6 +76,8 @@ export const ATTEMPT_TO_CALL_NIL: ErrorEntry = {
     if (!codeText) {
       causes.push({
         percent: 90,
+        text: "The variable or function being called is nil. Without the related code, the exact source cannot be pinpointed.",
+      });
 
       fixes.push("Ensure the function exists before calling it.");
       fixes.push("Provide the related script for a deeper analysis.");

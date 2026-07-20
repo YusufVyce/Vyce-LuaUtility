@@ -1,13 +1,13 @@
-import { extractVariableFlow } from "@/lib/analyzer/codeFlow";
-import { runScanRules } from "@/lib/analyzer/scanner/rules";
+import { extractVariableFlow, type VariableFlow } from "@/lib/analyzer/codeFlow";
+import { runScanRules, type ScanWarning } from "@/lib/analyzer/scanner/rules";
 import { scanCode } from "@/lib/analyzer/scanner/scanCode";
-import {
-  findMatch,
-  ERROR_DICT,
-} from "@/lib/error-parser";
+import { findMatch, ERROR_DICT } from "@/lib/error-parser";
 import { enrichAnalysis } from "@/lib/analyzer/contextAnalyzer";
 
-import type { Cause, DeprecatedApi } from "@/lib/types";
+import type { Analysis, Cause, DeprecatedApi } from "@/lib/types";
+
+/** Hard ceiling on input size so a pathological paste can't stall the UI thread. */
+const MAX_INPUT_LENGTH = 200_000;
 
 export type AnalyzerResult =
   | {
@@ -28,91 +28,142 @@ export type AnalyzerResult =
       }[];
 
       deprecatedApis?: DeprecatedApi[];
+      scanWarnings?: ScanWarning[];
+      variableFlow?: VariableFlow[];
     }
-  | { matched: false };
+  | { matched: false; error?: string };
 
+/**
+ * Runs a single ErrorEntry's analyze() in isolation so that one misbehaving
+ * (or third-party/community-contributed) rule can never take down the whole
+ * analysis pipeline. Failures are logged with enough context to debug which
+ * rule broke, then treated as "no useful signal" rather than a crash.
+ */
+function safeAnalyze(
+  entry: (typeof ERROR_DICT)[number],
+  logText: string,
+  codeText: string,
+): Analysis | null {
+  try {
+    return entry.analyze(logText, codeText);
+  } catch (error) {
+    console.error(`[analyzerEngine] rule "${entry.id}" threw during analyze():`, error);
+    return null;
+  }
+}
+
+/**
+ * Analyzes a Roblox error log and/or the surrounding Lua code, returning a
+ * best-effort diagnosis. Prefers matching against the log text (fast, high
+ * confidence); when no log is supplied it falls back to scoring code-only
+ * heuristics across the rule dictionary.
+ *
+ * This function never throws: any unexpected failure is caught, logged, and
+ * surfaced to the caller as `{ matched: false, error }` so the UI can show a
+ * graceful "couldn't analyze this" state instead of crashing.
+ */
 export function analyzeErrorAndCode(
   logText: string,
   codeText: string,
 ): AnalyzerResult {
-  // Prefer log-based matching when logText is provided
-  if (logText && logText.trim().length > 0) {
-    const match = findMatch(logText);
+  try {
+    if (logText.length > MAX_INPUT_LENGTH || codeText.length > MAX_INPUT_LENGTH) {
+      return {
+        matched: false,
+        error: `Input too large to analyze (limit is ${MAX_INPUT_LENGTH.toLocaleString()} characters).`,
+      };
+    }
 
-    if (!match) return { matched: false };
+    // Prefer log-based matching when logText is provided: it's a direct
+    // regex/alias match against known Roblox error signatures, so it's both
+    // cheaper and more reliable than scoring every rule against raw code.
+    if (logText.trim().length > 0) {
+      return analyzeFromLog(logText, codeText);
+    }
 
-    const detectedConfidence = match.confidence;
+    // No log to anchor on: fall back to scoring code-only heuristics.
+    if (codeText.trim().length > 0) {
+      return analyzeFromCodeOnly(codeText);
+    }
 
-    const rawAnalysis = match.entry.analyze(logText, codeText);
-    const analysis = enrichAnalysis(rawAnalysis, logText, codeText);
+    return { matched: false };
+  } catch (error) {
+    console.error("[analyzerEngine] analyzeErrorAndCode failed unexpectedly:", error);
+    return { matched: false, error: "An unexpected error occurred while analyzing this input." };
+  }
+}
 
-    const scan = scanCode(codeText);
-    console.log(scan);
-    const warnings = runScanRules(scan);
-    console.log(warnings);
-    const flow = extractVariableFlow(codeText);
-    console.log(flow);
+function analyzeFromLog(logText: string, codeText: string): AnalyzerResult {
+  const match = findMatch(logText);
+  if (!match) return { matched: false };
 
-    return {
-      matched: true,
-      ruleId: match.entry.id,
-      title: match.entry.title,
-      rootCause: analysis.explanation,
-      fix: analysis.fixes[0] ?? "No recommended fix available.",
-      correctedExample: analysis.example,
-      severity: analysis.severity,
-      confidence: analysis.confidence !== undefined ? analysis.confidence : (detectedConfidence || analysis.confidence),
-      codeInsights: analysis.codeInsights,
-      deprecatedApis: analysis.deprecatedApis,
-      causes: analysis.causes,
-      fixes: analysis.fixes,
-    };
+  const rawAnalysis = safeAnalyze(match.entry, logText, codeText);
+  if (!rawAnalysis) {
+    return { matched: false, error: `The "${match.entry.title}" rule failed to analyze this input.` };
   }
 
-  // If no log provided but code exists, attempt code-only analysis using rule heuristics.
-  if (codeText && codeText.trim().length > 0) {
-    const candidates = ERROR_DICT;
+  const analysis = enrichAnalysis(rawAnalysis, logText, codeText);
 
-    // Score candidates by whether their analyze() returns useful fixes/examples
-    const scored = candidates
-      .map((entry) => {
-        try {
-          const analysis = entry.analyze("", codeText);
-          const score = (analysis.fixes?.length || 0) * 2 + (analysis.example ? 1 : 0) + (analysis.causes?.length || 0);
-          return { entry, analysis, score };
-        } catch (e) {
-          return { entry, analysis: null, score: 0 };
-        }
-      })
-      .filter((s) => s.score > 0)
-      .sort((a, b) => b.score - a.score);
+  // Structural scan of the code (variable declarations, WaitForChild usage,
+  // property-access chains) feeds additional lint-style warnings. These are
+  // computed but not currently attached to the result — surfaced here as
+  // `scanWarnings` so callers/UI can opt into them without recomputing.
+  const scan = scanCode(codeText);
+  const scanWarnings = runScanRules(scan);
+  const variableFlow = extractVariableFlow(codeText);
 
-    if (scored.length === 0) return { matched: false };
+  return {
+    matched: true,
+    ruleId: match.entry.id,
+    title: match.entry.title,
+    rootCause: analysis.explanation,
+    fix: analysis.fixes[0] ?? "No recommended fix available.",
+    correctedExample: analysis.example,
+    severity: analysis.severity,
+    confidence: analysis.confidence ?? match.confidence,
+    codeInsights: analysis.codeInsights,
+    deprecatedApis: analysis.deprecatedApis,
+    causes: analysis.causes,
+    fixes: analysis.fixes,
+    ...(scanWarnings.length > 0 ? { scanWarnings } : {}),
+    ...(variableFlow.length > 0 ? { variableFlow } : {}),
+  };
+}
 
-    const best = scored[0];
-    const rawAnalysis = best.analysis ?? {
-      explanation: "Potential issue detected in code.",
-      causes: [],
-      fixes: [],
-      example: undefined,
-    };
-    const analysis = enrichAnalysis(rawAnalysis, "", codeText);
+function analyzeFromCodeOnly(codeText: string): AnalyzerResult {
+  // Score every rule by how much useful signal its analyze() call produces
+  // for this code (more fixes / an example / more causes = a better guess).
+  const scored = ERROR_DICT.map((entry) => {
+    const analysis = safeAnalyze(entry, "", codeText);
+    if (!analysis) return { entry, analysis: null, score: 0 };
 
-    return {
-      matched: true,
-      ruleId: `code-only-${best.entry.id}`,
-      title: best.entry.title + " (code-only)",
-      rootCause: analysis.explanation ?? "Potential issue detected in code.",
-      fix: analysis.fixes?.[0] ?? "Review the code for reported issues.",
-      correctedExample: analysis.example,
-      severity: analysis.severity,
-      confidence: analysis.confidence,
-      codeInsights: analysis.codeInsights,
-      deprecatedApis: analysis.deprecatedApis,
-      causes: analysis.causes,
-      fixes: analysis.fixes,
-    };
-  }
+    const score =
+      (analysis.fixes?.length ?? 0) * 2 +
+      (analysis.example ? 1 : 0) +
+      (analysis.causes?.length ?? 0);
 
-  return { matched: false };
-}
+    return { entry, analysis, score };
+  })
+    .filter((candidate) => candidate.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  if (!best || !best.analysis) return { matched: false };
+
+  const analysis = enrichAnalysis(best.analysis, "", codeText);
+
+  return {
+    matched: true,
+    ruleId: `code-only-${best.entry.id}`,
+    title: `${best.entry.title} (code-only)`,
+    rootCause: analysis.explanation,
+    fix: analysis.fixes[0] ?? "Review the code for reported issues.",
+    correctedExample: analysis.example,
+    severity: analysis.severity,
+    confidence: analysis.confidence,
+    codeInsights: analysis.codeInsights,
+    deprecatedApis: analysis.deprecatedApis,
+    causes: analysis.causes,
+    fixes: analysis.fixes,
+  };
+}
