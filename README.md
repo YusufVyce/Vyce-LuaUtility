@@ -1,47 +1,62 @@
 <div align="center">
-  <br>
-  <h1>Vyce LuaUtility</h1>
-  <p><b>Dynamic root cause analyzer for Roblox Scripts.</b></p>
-  <p><i>Stop guessing. Start fixing.</i></p>
-  
-  <br>
-  
- <img src="images/preview.png" width="800">
-  
-  <br>
-  
-  <a href="https://vyce-lua-utility.vercel.app"><b>Live Demo</b></a> • 
-  <a href="#features">Features</a> • 
-  <a href="#installation">Installation</a>
+
+# Vyce LuaUtility
+
+### Advanced Error Analysis Toolkit for Roblox Luau
+
+Analyze Roblox runtime errors, identify their root causes, and receive actionable debugging insights.
+
+**Built exclusively for Roblox Studio (Luau).**
+
+<img src="images/preview.png" width="850">
+
+[Live Demo](https://vyce-lua-utility.vercel.app) •
+[Documentation](#documentation) •
+[Features](#features)
+
 </div>
 
 ---
 
-### 🚀 The Problem
-Debugging takes time. Context switching between console logs and script lines drains productivity. **Error Parser** reads your error trace and context to pinpoint the *exact* root cause, not generic guesses.
+## 📖 About
 
-### ✨ Features
-*   **Intelligent Analysis**: Context-aware root cause detection.
-*   **Fast**: Optimized for the developer workflow.
-*   **98% Fixer Rate**: High accuracy in diagnosing common runtime exceptions.
+Vyce LuaUtility is a developer toolkit designed specifically for **Roblox Studio**.
 
-### 🛠 Tech Stack
-Built with modern tools for performance and scalability:
-![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)
-![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=flat&logo=vite&logoColor=white)
-![Bun](https://img.shields.io/badge/bun-%23000000.svg?style=flat&logo=bun&logoColor=white)
+Instead of matching errors with simple regex patterns, it analyzes the error, surrounding context, and code structure to determine the most likely root cause and provide practical debugging guidance.
+
+> ⚠️ This project is built exclusively for Roblox (Luau). It is **not** intended for FiveM, Love2D, Defold, or other Lua platforms.
 
 ---
 
-### 💻 Installation
-Getting started with the local development environment:
+## ✨ Features
+
+- 🔍 Context-aware error analysis
+- 🧠 Root cause detection
+- ⚡ Fast analysis engine
+- 📚 Detailed explanations
+- 💡 Fix suggestions
+- 🛡️ Roblox-specific diagnostics
+- 🧩 Supports common Luau runtime errors
+
+---
+
+## 🛠 Tech Stack
+
+- TypeScript
+- React
+- TanStack Router
+- Vite
+- Bun
+
+---
+
+## 💻 Installation
 
 ```bash
-# Clone the repository
-git clone [https://github.com/YusufVyce/Vyce-LuaUtility.git](https://github.com/YusufVyce/Vyce-LuaUtility.git)
+git clone https://github.com/YusufVyce/Vyce-LuaUtility.git
 
-# Install dependencies
+cd Vyce-LuaUtility
+
 bun install
 
-# Start development server
 bun run dev
