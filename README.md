@@ -2,17 +2,18 @@
 
 # Vyce LuaUtility
 
-### Advanced Error Analysis Toolkit for Roblox Studio (Luau)
+### Advanced Runtime Error Analysis Toolkit for Roblox Studio (Luau)
 
-Analyze Roblox runtime errors, identify root causes, and receive accurate debugging guidance.
+Analyze Roblox runtime errors, identify their root causes, and receive practical debugging guidance.
 
-**Built exclusively for Roblox Studio.**
+**Built exclusively for Roblox Studio (Luau).**
 
 <img src="images/preview.png" width="900"/>
 
 <p>
   <a href="https://vyce-lua-utility.vercel.app"><strong>Live Demo</strong></a> •
   <a href="#features"><strong>Features</strong></a> •
+  <a href="#example"><strong>Example</strong></a> •
   <a href="#installation"><strong>Installation</strong></a> •
   <a href="#contributing"><strong>Contributing</strong></a>
 </p>
@@ -27,13 +28,43 @@ Vyce LuaUtility is an open-source developer toolkit built specifically for **Rob
 
 Unlike traditional regex-based error parsers, Vyce LuaUtility analyzes runtime errors together with surrounding context to determine the most likely root cause and provide practical debugging guidance.
 
-It helps Roblox developers understand **why** an error occurred instead of only showing **where** it happened.
+Instead of only showing **where** an error occurred, it helps explain **why** it occurred and how to resolve it.
 
-> **Note**
+> **Important**
 >
-> This project is designed exclusively for **Roblox Studio (Luau)**.
+> This project is designed **exclusively for Roblox Studio (Luau)**.
+>
+> It is **not** a general-purpose Lua utility library.
 >
 > It is **not** intended for FiveM, GTA V, Love2D, Defold, Garry's Mod, or any other Lua platform.
+
+---
+
+# What This Project Does
+
+✅ Analyze Roblox runtime errors
+
+✅ Detect likely root causes
+
+✅ Explain why an error happened
+
+✅ Suggest practical debugging steps
+
+✅ Provide Roblox-specific diagnostics
+
+---
+
+# What This Project Does NOT Do
+
+❌ It is **not** a compiler.
+
+❌ It is **not** a static analyzer or linter.
+
+❌ It does **not** automatically fix your code.
+
+❌ It does **not** replace Roblox Studio or Luau's built-in analyzer.
+
+Instead, it focuses on helping developers understand runtime errors faster.
 
 ---
 
@@ -41,11 +72,11 @@ It helps Roblox developers understand **why** an error occurred instead of only 
 
 - 🔍 Context-aware runtime error analysis
 - 🧠 Root cause detection
-- 💡 Actionable debugging suggestions
+- 💡 Practical debugging suggestions
 - 📚 Human-readable explanations
 - ⚡ Fast analysis engine
 - 🛡️ Roblox-specific diagnostics
-- 🧩 Supports common Luau runtime errors
+- 🧩 Support for common Luau runtime errors
 
 ---
 
@@ -61,7 +92,32 @@ Examples include:
 - stack overflow
 - table index is nil
 
-...and more.
+...and many more.
+
+---
+
+# Example
+
+### Input
+
+```text
+attempt to index nil with 'Health'
+
+Script: EnemyController.lua
+Line: 42
+```
+
+### Analysis
+
+```text
+Root Cause
+
+The variable "enemy" is nil because FindFirstChild() returned nil.
+
+Suggestion
+
+Verify that the object exists before accessing "Health".
+```
 
 ---
 
@@ -91,12 +147,12 @@ bun run dev
 
 # Contributing
 
-Contributions are welcome.
+Contributions, bug reports, feature requests, and discussions are always welcome.
 
-If you have ideas, bug reports, or improvements, feel free to open an Issue or start a Discussion.
+Feel free to open an Issue or start a Discussion.
 
 ---
 
 # License
 
-GNU General Public License v3.0
+Licensed under the GNU General Public License v3.0.
