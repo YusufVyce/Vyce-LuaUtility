@@ -1,4 +1,8 @@
 import { extractVariableFlow, type VariableFlow } from "@/lib/analyzer/codeFlow";
+import {
+  buildAdvancedAnalysis,
+  type AdvancedAnalyzerOutput,
+} from "@/lib/analyzer/advancedRobloxAnalyzer";
 import { runScanRules, type ScanWarning } from "@/lib/analyzer/scanner/rules";
 import { scanCode } from "@/lib/analyzer/scanner/scanCode";
 import { findMatch, ERROR_DICT } from "@/lib/error-parser";
@@ -30,6 +34,7 @@ export type AnalyzerResult =
       deprecatedApis?: DeprecatedApi[];
       scanWarnings?: ScanWarning[];
       variableFlow?: VariableFlow[];
+      advanced?: AdvancedAnalyzerOutput;
     }
   | { matched: false; error?: string };
 
@@ -111,6 +116,7 @@ function analyzeFromLog(logText: string, codeText: string): AnalyzerResult {
   const scan = scanCode(codeText);
   const scanWarnings = runScanRules(scan);
   const variableFlow = extractVariableFlow(codeText);
+  const advanced = buildAdvancedAnalysis(logText, codeText, analysis.fixes);
 
   return {
     matched: true,
@@ -125,6 +131,7 @@ function analyzeFromLog(logText: string, codeText: string): AnalyzerResult {
     deprecatedApis: analysis.deprecatedApis,
     causes: analysis.causes,
     fixes: analysis.fixes,
+    advanced,
     ...(scanWarnings.length > 0 ? { scanWarnings } : {}),
     ...(variableFlow.length > 0 ? { variableFlow } : {}),
   };
@@ -151,6 +158,7 @@ function analyzeFromCodeOnly(codeText: string): AnalyzerResult {
   if (!best || !best.analysis) return { matched: false };
 
   const analysis = enrichAnalysis(best.analysis, "", codeText);
+  const advanced = buildAdvancedAnalysis("", codeText, analysis.fixes);
 
   return {
     matched: true,
@@ -165,5 +173,6 @@ function analyzeFromCodeOnly(codeText: string): AnalyzerResult {
     deprecatedApis: analysis.deprecatedApis,
     causes: analysis.causes,
     fixes: analysis.fixes,
+    advanced,
   };
 }

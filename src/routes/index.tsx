@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EXAMPLES } from "@/lib/error-parser";
+import type { AdvancedAnalyzerOutput } from "@/lib/analyzer/advancedRobloxAnalyzer";
 import {
   analyzeErrorAndCode,
   type AnalyzerResult,
@@ -29,6 +30,8 @@ deprecatedApis?: {
   replacement: string;
   reason: string;
 }[];
+
+advanced?: AdvancedAnalyzerOutput;
 };
 
 type MatchResult = {
@@ -50,6 +53,8 @@ function ErrorParserPage() {
   const [errorFlash, setErrorFlash] = useState(false);
   const [animateResult, setAnimateResult] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copy");
+  const [copiedTemplateId, setCopiedTemplateId] = useState<string | null>(null);
+  const [openTemplateId, setOpenTemplateId] = useState<string | null>(null);
   const [exampleIndex, setExampleIndex] = useState(0);
 
   const errorRef = useRef<HTMLTextAreaElement>(null);
@@ -95,6 +100,7 @@ function ErrorParserPage() {
 
           codeInsights: analysis.codeInsights,
           deprecatedApis: analysis.deprecatedApis,
+          advanced: analysis.advanced,
         },
       };
 
@@ -150,13 +156,13 @@ function ErrorParserPage() {
     errorRef.current?.focus();
   }
 
-  async function copyExample(code: string) {
+  async function copyToClipboard(content: string): Promise<boolean> {
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(code);
+        await navigator.clipboard.writeText(content);
       } else {
         const ta = document.createElement("textarea");
-        ta.value = code;
+        ta.value = content;
         ta.style.position = "fixed";
         ta.style.opacity = "0";
         document.body.appendChild(ta);
@@ -164,13 +170,80 @@ function ErrorParserPage() {
         document.execCommand("copy");
         ta.remove();
       }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function copyExample(code: string) {
+    const copied = await copyToClipboard(code);
+    if (copied) {
       setCopyLabel("Copied ✓");
       showToast("Code copied to clipboard");
-    } catch {
+    } else {
       setCopyLabel("Copy failed");
       showToast("Could not copy — select the text manually", "error");
-    } finally {
-      setTimeout(() => setCopyLabel("Copy"), 2000);
+    }
+    setTimeout(() => setCopyLabel("Copy"), 2000);
+  }
+
+  async function copyTemplate(templateId: string, template: string) {
+    const copied = await copyToClipboard(template);
+    if (copied) {
+      setCopiedTemplateId(templateId);
+      showToast("Template copied to clipboard");
+      setTimeout(() => setCopiedTemplateId((current) => (current === templateId ? null : current)), 1800);
+      return;
+    }
+    showToast("Could not copy template", "error");
+  }
+
+  async function copySymbol(symbol: string) {
+    const copied = await copyToClipboard(symbol);
+    if (copied) {
+      showToast(`Symbol '${symbol}' copied`);
+      return;
+    }
+    showToast("Could not copy symbol", "error");
+  }
+
+  function matchStrategyBadgeClass(strategy: AdvancedAnalyzerOutput["matchStrategy"]) {
+    switch (strategy) {
+      case "exact":
+        return "border-emerald-500/25 bg-emerald-500/10 text-emerald-300";
+      case "partial":
+        return "border-amber-500/25 bg-amber-500/10 text-amber-300";
+      case "fallback":
+        return "border-cyan-500/25 bg-cyan-500/10 text-cyan-300";
+      default:
+        return "border-zinc-700 bg-zinc-900/70 text-zinc-400";
+    }
+  }
+
+  function severityIcon(severity: "low" | "medium" | "high" | "critical") {
+    switch (severity) {
+      case "critical":
+        return "🔴";
+      case "high":
+        return "🟠";
+      case "medium":
+        return "🟡";
+      default:
+        return "🔵";
+    }
+  }
+
+  function sortFindingSeverity(severity: "low" | "medium" | "high" | "critical") {
+    switch (severity) {
+      case "critical":
+        return 0;
+      case "high":
+        return 1;
+      case "medium":
+        return 2;
+      default:
+        return 3;
     }
   }
 
@@ -183,13 +256,55 @@ function ErrorParserPage() {
 
   const analysis = result?.kind === "match"
     ? result.analysis
-    : { explanation: "", causes: [], fixes: [], example: undefined };
+    : { explanation: "", causes: [], fixes: [], example: undefined, advanced: undefined };
 
   const entry = result?.kind === "match"
   ? result.data.entry
   : { id: "unknown", title: "Unknown error" };
 
   const logSnapshot = result?.kind === "match" ? result.logSnapshot : "";
+  const advanced = analysis.advanced;
+  const sortedFindings = useMemo(() => {
+    const findings = [...(advanced?.staticFindings ?? [])];
+    findings.sort((a, b) => sortFindingSeverity(a.severity) - sortFindingSeverity(b.severity));
+    return findings;
+  }, [advanced?.staticFindings]);
+
+  useEffect(() => {
+    if (!advanced?.fixTemplates?.length) {
+      setOpenTemplateId(null);
+      return;
+    }
+    setOpenTemplateId((current) => current ?? advanced.fixTemplates[0].id);
+  }, [advanced?.fixTemplates]);
+
+  function findingSeverityBadgeClass(severity: "low" | "medium" | "high" | "critical") {
+    switch (severity) {
+      case "critical":
+        return "badge-critical";
+      case "high":
+        return "badge-high";
+      case "medium":
+        return "badge-medium";
+      default:
+        return "badge-low";
+    }
+  }
+
+  function priorityBadgeClass(priority: 1 | 2 | 3 | 4 | 5) {
+    switch (priority) {
+      case 1:
+        return "badge-safety";
+      case 2:
+        return "badge-timing";
+      case 3:
+        return "badge-type";
+      case 4:
+        return "badge-architecture";
+      default:
+        return "badge-performance";
+    }
+  }
 
   const metaLabel = useMemo(() => {
     if (result?.kind !== "match") return "";
@@ -226,7 +341,7 @@ function ErrorParserPage() {
         ))}
       </div>
 
-      <div className="relative min-h-screen flex flex-col items-center px-6 pb-10">
+      <div className="analyzer-container relative min-h-screen flex flex-col items-center pb-10">
   <div className="ep-aurora" aria-hidden="true" />
 
   <header className="relative z-10 w-full max-w-5xl pt-14 md:pt-20 pb-8 space-y-6 text-center">
@@ -278,8 +393,8 @@ function ErrorParserPage() {
     tabIndex={-1}
     className="relative z-10 w-full max-w-5xl space-y-6 outline-none"
   >
-    <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      <div className="lg:col-span-5 space-y-5 ep-card p-5">
+    <section className="input-grid items-start">
+      <div className="ep-card result-card space-y-5">
         <div>
           <label
             htmlFor="errorInput"
@@ -290,7 +405,7 @@ function ErrorParserPage() {
           </label>
 
           <div
-            className={`bg-black/40 border rounded-lg p-3 transition-all ${
+            className={`bg-black/40 border rounded-lg p-3 transition-all text-container ${
               errorFlash
                 ? "border-red-500/60 ring-2 ring-red-500/60"
                 : "border-zinc-800/70 focus-within:border-emerald-500/40 focus-within:shadow-[0_0_0_3px_rgba(16,185,129,0.08)]"
@@ -321,7 +436,7 @@ function ErrorParserPage() {
                     · optional
                   </span>
                 </label>
-                <div className="bg-black/40 border border-zinc-800/70 rounded-lg p-3 focus-within:border-emerald-500/40 focus-within:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] transition-all">
+                <div className="bg-black/40 border border-zinc-800/70 rounded-lg p-3 focus-within:border-emerald-500/40 focus-within:shadow-[0_0_0_3px_rgba(16,185,129,0.08)] transition-all text-container">
                   <textarea
                     id="codeInput"
                     rows={8}
@@ -364,11 +479,11 @@ function ErrorParserPage() {
             </div>
 
             <div
-              className="lg:col-span-7 relative min-h-[420px]"
+              className="relative min-h-[420px] results-panel"
               aria-live="polite"
             >
               {result.kind === "idle" && (
-                <div className="ep-card p-12 text-center space-y-4 border-dashed">
+                <div className="ep-card result-card text-center space-y-4 border-dashed">
                   <div className="mx-auto w-14 h-14 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-center text-2xl text-emerald-400 font-mono">
                     {"{ }"}
                   </div>
@@ -387,7 +502,7 @@ function ErrorParserPage() {
 
               {result?.kind === "match" && (
                 <div
-                  className={`ep-card ep-card-accent p-6 space-y-6 ${
+                  className={`ep-card ep-card-accent result-card space-y-6 ${
                     animateResult ? "slide-fade-enter-active" : "slide-fade-enter"
                   }`}
                 >
@@ -401,8 +516,8 @@ function ErrorParserPage() {
                       </h2>
                       <div className="mt-3 flex flex-wrap gap-2">
   {analysis.severity && (
-    <div className="px-3 py-1 rounded-full border border-red-500/30 bg-red-500/10 text-red-300 text-xs font-medium">
-      🔥 Severity: {analysis.severity}
+    <div className={`badge ${findingSeverityBadgeClass(analysis.severity.toLowerCase() as "low" | "medium" | "high" | "critical")}`}>
+      Severity: {analysis.severity}
     </div>
   )}
 
@@ -414,9 +529,16 @@ function ErrorParserPage() {
 </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full font-medium">
-                        <span className="ep-dot" />
-                        Pattern match
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="inline-flex items-center gap-1.5 text-[11px] text-emerald-300 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 rounded-full font-medium">
+                          <span className="ep-dot" />
+                          Pattern match
+                        </div>
+                        {advanced?.matchStrategy && (
+                          <div className={`inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full border font-semibold uppercase tracking-wide ${matchStrategyBadgeClass(advanced.matchStrategy)}`}>
+                            Match: {advanced.matchStrategy}
+                          </div>
+                        )}
                       </div>
                       <div
                         className="text-[10px] text-zinc-600 mt-2 font-mono max-w-[220px] truncate"
@@ -468,6 +590,145 @@ function ErrorParserPage() {
                       </ol>
                     </section>
 
+                    {advanced && (
+                      <details className="group rounded-xl border border-zinc-800/80 bg-zinc-950/30 p-4" open>
+                        <summary className="list-none cursor-pointer flex items-center justify-between gap-3">
+                          <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-300 font-semibold">
+                            <span className="ep-step">4</span> Advanced Analysis
+                          </h3>
+                          <span className="text-[10px] text-zinc-500 group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+
+                        <div className="mt-4 space-y-5">
+                          {advanced.errorSymbols.length > 0 && (
+                            <section className="space-y-2">
+                              <div className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                                Error Symbols
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {advanced.errorSymbols.map((symbol) => (
+                                  <button
+                                    key={symbol}
+                                    type="button"
+                                    onClick={() => copySymbol(symbol)}
+                                    className="px-2.5 py-1 rounded-full border border-cyan-500/25 bg-cyan-500/10 text-cyan-200 text-xs hover:bg-cyan-500/15 transition-colors"
+                                    title={`Copy symbol '${symbol}'`}
+                                  >
+                                    {symbol}
+                                  </button>
+                                ))}
+                              </div>
+                            </section>
+                          )}
+
+                          {sortedFindings.length > 0 && (
+                            <section className="space-y-2">
+                              <div className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                                Static Findings
+                              </div>
+                              <div className="space-y-2">
+                                {sortedFindings.map((finding, idx) => (
+                                  <div
+                                    key={`${finding.id}-${idx}`}
+                                    className="result-card rounded-lg border border-zinc-800 bg-zinc-900/40"
+                                  >
+                                    <div className="flex items-start justify-between gap-3 text-sm text-zinc-200">
+                                      <div className="flex items-start gap-2 min-w-0 text-container">
+                                      <span className="shrink-0 mt-0.5" aria-hidden="true">
+                                        {severityIcon(finding.severity)}
+                                      </span>
+                                      <div className="space-y-1">
+                                        <p>{finding.message}</p>
+                                        <div className="text-[11px] text-zinc-500">
+                                          {finding.symbol ? `symbol: ${finding.symbol}` : ""}
+                                          {finding.symbol && finding.line ? " • " : ""}
+                                          {finding.line ? `line: ${finding.line}` : ""}
+                                        </div>
+                                      </div>
+                                      </div>
+                                      <span className={`badge ${findingSeverityBadgeClass(finding.severity)}`}>{finding.severity}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
+                          )}
+
+                          {advanced.prioritizedFixes.length > 0 && (
+                            <section className="space-y-2">
+                              <div className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                                Priority Fixes
+                              </div>
+                              <div className="grid gap-2">
+                                {advanced.prioritizedFixes.map((fix, idx) => (
+                                  <div
+                                    key={`${fix}-${idx}`}
+                                    className="rounded-lg border border-emerald-500/15 bg-emerald-500/5 p-3"
+                                  >
+                                    <div className="flex items-start gap-3">
+                                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/20 text-emerald-300 font-mono mt-0.5">
+                                        {String(idx + 1).padStart(2, "0")}
+                                      </span>
+                                      <p className="text-sm text-zinc-200 leading-relaxed">{fix}</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </section>
+                          )}
+
+                          {advanced.fixTemplates.length > 0 && (
+                            <section className="space-y-2">
+                              <div className="text-[11px] uppercase tracking-wider text-zinc-500 font-semibold">
+                                Fix Templates
+                              </div>
+                              <div className="space-y-3">
+                                {advanced.fixTemplates.map((template) => {
+                                  const isOpen = openTemplateId === template.id;
+                                  return (
+                                  <div
+                                    key={template.id}
+                                    className={`fix-accordion ${isOpen ? "open" : ""}`}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="fix-accordion-header w-full text-left"
+                                      onClick={() => setOpenTemplateId((current) => (current === template.id ? null : template.id))}
+                                      aria-expanded={isOpen}
+                                      aria-label={`Toggle fix template ${template.title}`}
+                                    >
+                                      <span className={`badge ${priorityBadgeClass(template.priority)}`}>P{template.priority}</span>
+                                      <span className="text-sm font-semibold text-zinc-100 truncate">{template.title}</span>
+                                      <span className="ml-auto text-[10px] text-zinc-400">{isOpen ? "▼" : "▶"}</span>
+                                    </button>
+                                    <div className="fix-accordion-content text-container">
+                                      <p className="mt-2 text-xs text-zinc-300 leading-relaxed italic">
+                                        {template.whyItWorks}
+                                      </p>
+                                      <div className="code-block-wrapper">
+                                      <button
+                                        type="button"
+                                        onClick={() => copyTemplate(template.id, template.template)}
+                                        className={`copy-button ${copiedTemplateId === template.id ? "copied" : ""}`}
+                                        aria-label="Copy code to clipboard"
+                                      >
+                                        {copiedTemplateId === template.id ? "Copied ✓" : "Copy template"}
+                                      </button>
+                                      <pre className="code-block">
+                                        <code>{template.template}</code>
+                                      </pre>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  );
+                                })}
+                              </div>
+                            </section>
+                          )}
+                        </div>
+                      </details>
+                    )}
+
                         {analysis.codeInsights && analysis.codeInsights.length > 0 && (
                   <section className="space-y-2">
     <h3 className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 font-semibold">
@@ -479,7 +740,7 @@ function ErrorParserPage() {
       {analysis.codeInsights.map((insight, index) => (
         <div
           key={index}
-          className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4"
+          className="result-card rounded-lg border border-emerald-500/20 bg-emerald-500/5"
         >
           <div className="text-sm font-semibold text-emerald-300">
             {insight.title}
@@ -505,7 +766,7 @@ function ErrorParserPage() {
       {analysis.deprecatedApis.map((api, index) => (
         <div
           key={index}
-          className="rounded-lg border border-yellow-500/20 bg-yellow-500/5 p-4"
+          className="result-card rounded-lg border border-yellow-500/20 bg-yellow-500/5"
         >
           <div className="text-sm font-semibold text-yellow-300">
             {api.api} → {api.replacement}
@@ -527,17 +788,20 @@ function ErrorParserPage() {
                             <span className="ep-step">4</span> Corrected
                             Implementation
                           </h3>
+                        </div>
+                        <div className="code-block-wrapper">
                           <button
                             type="button"
                             onClick={() => copyExample(analysis.example ?? "")}
-                            className="text-[11px] px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-emerald-300 hover:border-emerald-500/30 transition-all"
+                            className={`copy-button ${copyLabel === "Copied ✓" ? "copied" : ""}`}
+                            aria-label="Copy code to clipboard"
                           >
                             {copyLabel}
                           </button>
+                          <pre className="code-block">
+                            <code>{analysis.example ?? ""}</code>
+                          </pre>
                         </div>
-                        <pre className="bg-black/60 border border-zinc-800/80 p-4 rounded-lg text-xs text-emerald-300/90 overflow-auto font-mono max-h-64 leading-relaxed">
-                          {analysis.example ?? ""}
-                        </pre>
                       </section>
                     )}
                   </div>
@@ -545,7 +809,7 @@ function ErrorParserPage() {
               )}
 
               {result?.kind === "generic" && (
-                <div ref={genericRef} tabIndex={-1} className="ep-card p-6 space-y-4">
+                <div ref={genericRef} tabIndex={-1} className="ep-card result-card space-y-4">
                   <div className="border-b border-zinc-800/60 pb-3">
                     <h3 className="text-lg font-bold text-zinc-100 serif-title">
                       No exact match found
@@ -601,7 +865,7 @@ function CauseRow({ percent, text }: { percent: number; text: string }) {
     return () => cancelAnimationFrame(raf);
   }, [percent]);
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 p-3 rounded flex flex-col gap-2">
+    <div className="result-card bg-zinc-900/50 border border-zinc-800 rounded flex flex-col gap-2">
       <div className="flex justify-between items-start gap-4">
         <span className="text-xs text-zinc-300">{text}</span>
         <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono shrink-0">
