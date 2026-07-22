@@ -11,7 +11,7 @@ Offline runtime error analysis with semantic understanding, root cause detection
 <img src="images/görsel_2026-07-22_045124401.png" width="1920"/>
 
 <p>
-  <a href="https://vyce-lua-utility.vercel.app"><strong>🌐 Live Demo</strong></a> •
+  <a href="https://parser.vyce.studio"><strong>🌐 Website</strong></a> •
   <a href="#features"><strong>✨ Features</strong></a> •
   <a href="#architecture"><strong>🏗 Architecture</strong></a> •
   <a href="#example"><strong>📖 Example</strong></a> •
@@ -184,7 +184,7 @@ The project is designed around three principles:
 # Installation
 
 ```bash
-git clone https://github.com/YusufVyce/Vyce-LuaUtility.git
+git clone https://github.com/YusufVyce/Vyce-Luau-ErrorAnalyzer.git
 
 cd Vyce-LuaUtility
 
