@@ -1,11 +1,8 @@
-import { extractVariableFlow, type VariableFlow } from "@/lib/analyzer/codeFlow";
 import {
-  buildAdvancedAnalysis,
+  buildAdvancedAnalysisFromDynamicResult,
   type AdvancedAnalyzerOutput,
 } from "@/lib/analyzer/advancedRobloxAnalyzer";
 import { runDynamicRobloxPipeline } from "@/lib/analyzer/pipeline";
-import { runScanRules, type ScanWarning } from "@/lib/analyzer/scanner/rules";
-import { scanCode } from "@/lib/analyzer/scanner/scanCode";
 
 import type { Analysis, Cause, DeprecatedApi } from "@/lib/types";
 
@@ -31,8 +28,6 @@ export type AnalyzerResult =
       }[];
 
       deprecatedApis?: DeprecatedApi[];
-      scanWarnings?: ScanWarning[];
-      variableFlow?: VariableFlow[];
       advanced?: AdvancedAnalyzerOutput;
     }
   | { matched: false; error?: string };
@@ -126,9 +121,7 @@ function analyzeWithPipeline(logText: string, codeText: string): AnalyzerResult 
     })),
   };
 
-  const advanced = buildAdvancedAnalysis(logText, codeText, fixes);
-  const scanWarnings = runScanRules(scanCode(codeText));
-  const variableFlow = extractVariableFlow(codeText);
+  const advanced = buildAdvancedAnalysisFromDynamicResult(dynamic, logText, codeText, fixes);
 
   return {
     matched: true,
@@ -144,7 +137,5 @@ function analyzeWithPipeline(logText: string, codeText: string): AnalyzerResult 
     causes: analysisLike.causes,
     fixes: analysisLike.fixes,
     advanced,
-    ...(scanWarnings.length > 0 ? { scanWarnings } : {}),
-    ...(variableFlow.length > 0 ? { variableFlow } : {}),
   };
 }

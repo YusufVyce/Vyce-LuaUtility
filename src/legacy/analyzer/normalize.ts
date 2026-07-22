@@ -1,3 +1,4 @@
+/** @deprecated Legacy analyzer module retained for compatibility only. Do not import in production runtime. */
 
 export function normalize(text: string): string {
   return text

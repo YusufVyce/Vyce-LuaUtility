@@ -1,3 +1,4 @@
+/** @deprecated Legacy analyzer module retained for compatibility only. Do not import in production runtime. */
 export interface ScanResult {
   variables: Record<string, string>;
   propertyAccess: string[];

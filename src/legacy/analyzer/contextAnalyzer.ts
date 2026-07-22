@@ -1,5 +1,6 @@
+/** @deprecated Legacy analyzer module retained for compatibility only. Do not import in production runtime. */
 import type { Analysis, Cause } from "../types";
-import { findMatch } from "../error-parser";
+import { findMatch } from "../lib/error-parser";
 import { extractVariableFlow } from "./codeFlow";
 import { CONTEXT_RULES, type ContextIssue, type ContextRuleInput } from "./contextRules";
 

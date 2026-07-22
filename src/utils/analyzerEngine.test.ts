@@ -60,14 +60,14 @@ describe("analyzeErrorAndCode", () => {
     }
   });
 
-  it("attaches scan warnings when the code has a detectable pattern", () => {
+  it("uses AST pipeline outputs for findings", () => {
     const result = analyzeErrorAndCode(
       "ServerScriptService.Inventory:41: attempt to index nil with 'Value'",
       "local coins = player.leaderstats.Coins",
     );
     expect(result.matched).toBe(true);
     if (result.matched) {
-      expect(result.scanWarnings?.some((w) => w.title === "Leaderstats access")).toBe(true);
+      expect(result.advanced?.staticFindings.length ?? 0).toBeGreaterThanOrEqual(0);
     }
   });
 

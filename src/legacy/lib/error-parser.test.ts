@@ -1,3 +1,4 @@
+/** @deprecated Legacy analyzer module retained for compatibility only. Do not import in production runtime. */
 import { describe, expect, it } from "vitest";
 import { ERROR_DICT, findMatch } from "./error-parser";
 

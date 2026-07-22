@@ -33,6 +33,7 @@ export interface TokenizedInput {
   tokens: string[];
   tokenCounts: Record<string, number>;
   lineTokens: Array<{ line: number; tokens: string[] }>;
+  parserTokens?: unknown[];
 }
 
 export interface ClassifiedError {
@@ -63,12 +64,15 @@ export interface ExtractedContext {
   functions: string[];
   methods: string[];
   requires: string[];
+  requireChains: string[][];
+  moduleExports: string[];
   services: string[];
   apis: string[];
   side: "client" | "server" | "unknown";
   hasPcall: boolean;
   hasXpcall: boolean;
   hasWaitForChild: boolean;
+  hasWaitForChildTimeout: boolean;
   hasFindFirstChild: boolean;
   hasCharacterAdded: boolean;
   hasPlayerAdded: boolean;
@@ -77,10 +81,13 @@ export interface ExtractedContext {
   hasCoroutine: boolean;
   hasLoops: boolean;
   hasRecursiveFunction: boolean;
+  hasCharacterPropertyAccessWithoutSync: boolean;
   hasRemoteUse: boolean;
   hasTweenUse: boolean;
   hasDataStoreUse: boolean;
   tweenGoals: Array<{ target: string; property: string; line: number }>;
+  parserDiagnostics: string[];
+  ast?: unknown;
 }
 
 export interface Evidence {

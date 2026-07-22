@@ -1,18 +1,33 @@
 import { classifyErrorFamily } from "./classifier";
 import { applyConfidenceScores } from "./confidenceScorer";
 import { extractContext } from "./contextExtractor";
+import { runEvidenceEngine } from "./evidenceEngine";
 import { generateExplanation } from "./explanationGenerator";
 import { generateFixes } from "./fixGenerator";
-import { buildHypotheses } from "./hypothesisBuilder";
+import { runHypothesisEngine } from "./hypothesisEngine";
 import { ROBLOX_DIAGNOSTIC_KNOWLEDGE_BASE } from "./knowledgeBase";
 import { normalizeInput } from "./normalizer";
 import { analyzePerformance } from "./performanceAnalyzer";
 import { getRelatedDiagnostics } from "./relatedDiagnostics";
-import { runRuleEngine } from "./ruleEngine";
 import { analyzeSecurity } from "./securityAnalyzer";
 import { analyzeBestPractices } from "./bestPracticesAnalyzer";
 import { tokenizeInput } from "./tokenizer";
 import type { DynamicAnalysisResult } from "./types";
+
+function prioritizeHighlights(
+  highlights: DynamicAnalysisResult["highlightedCode"],
+  lineReference?: number,
+): DynamicAnalysisResult["highlightedCode"] {
+  if (!lineReference) return highlights.slice(0, 8);
+
+  const exact = highlights.filter((item) => item.line === lineReference);
+  const nearby = highlights.filter(
+    (item) => item.line !== lineReference && Math.abs(item.line - lineReference) <= 2,
+  );
+  const remaining = highlights.filter((item) => Math.abs(item.line - lineReference) > 2);
+
+  return [...exact, ...nearby, ...remaining].slice(0, 8);
+}
 
 export function runDynamicRobloxPipeline(logText: string, codeText: string): DynamicAnalysisResult | null {
   const normalized = normalizeInput(logText, codeText);
@@ -22,9 +37,9 @@ export function runDynamicRobloxPipeline(logText: string, codeText: string): Dyn
 
   const tokenized = tokenizeInput(normalized.compactLog, normalized.normalizedCode);
   const classified = classifyErrorFamily(normalized.compactLog);
-  const context = extractContext(normalized.normalizedCode, normalized.normalizedLog);
-  const signals = runRuleEngine(classified, context, tokenized, normalized.normalizedLog);
-  const hypotheses = applyConfidenceScores(buildHypotheses(signals));
+  const context = extractContext(normalized.normalizedCode, normalized.normalizedLog, tokenized.parserTokens);
+  const signals = runEvidenceEngine(classified, context, tokenized, normalized.normalizedLog);
+  const hypotheses = applyConfidenceScores(runHypothesisEngine(signals));
   const selectedHypothesis = hypotheses[0];
 
   if (!selectedHypothesis) {
@@ -54,7 +69,7 @@ export function runDynamicRobloxPipeline(logText: string, codeText: string): Dyn
     selectedHypothesis,
     evidence: selectedHypothesis.evidence,
     matchingRules,
-    highlightedCode: context.highlights.slice(0, 8),
+    highlightedCode: prioritizeHighlights(context.highlights, classified.lineReference),
     fixes,
     docs: selectedHypothesis.docs,
     relatedDiagnostics,

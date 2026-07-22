@@ -62,6 +62,73 @@ export interface AdvancedAnalyzerOutput {
   hypotheses?: Array<{ title: string; confidence: number; rootCause: string }>;
 }
 
+function toAdvancedAnalyzerOutput(
+  result: DynamicAnalysisResult,
+  logText: string,
+  codeText: string,
+  existingFixes: string[] = [],
+): AdvancedAnalyzerOutput {
+  const lineReference = parseLogLineReference(logText);
+  const lineText = lineReference ? getCodeLine(codeText, lineReference) : undefined;
+
+  const staticFindings: StaticFinding[] = result.evidence.map((item) => ({
+    id: item.id === "datastore-no-pcall" ? "nil-datastore-no-pcall" : item.id,
+    category: toStaticCategory(result.selectedHypothesis.title),
+    severity: item.id === "datastore-no-pcall" ? "critical" : toSeverityLabel(item.score),
+    message: item.message,
+    line: item.line,
+    evidence: `score +${item.score}`,
+  }));
+
+  const candidateFixes = [
+    ...existingFixes,
+    ...result.hypotheses.flatMap((item) => [item.fixes.minimal, item.fixes.better]),
+    result.fixes.minimal,
+    result.fixes.better,
+    result.fixes.production,
+  ].filter((value, index, arr) => value && arr.indexOf(value) === index);
+
+  const prioritizedFixes = candidateFixes.sort((a, b) => fixPriorityScore(a) - fixPriorityScore(b));
+
+  const errorSymbols = result.highlightedCode
+    .map((item) => item.variable ?? item.property ?? item.functionName)
+    .filter((value): value is string => Boolean(value));
+
+  return {
+    matchStrategy: result.strategy,
+    matchedRuleId: result.family,
+    errorLineMapping: {
+      logLineReference: lineReference,
+      resolvedCodeLine: lineText ? lineReference : result.highlightedCode[0]?.line,
+      codeLineText: lineText ?? result.highlightedCode[0]?.text,
+    },
+    errorSymbols,
+    staticFindings,
+    prioritizedFixes,
+    fixTemplates: buildTemplates(result),
+    patternDatabaseSize: result.knowledgeBaseSize,
+    quickSummary: result.quickSummary,
+    likelyRootCause: result.likelyRootCause,
+    evidence: result.evidence,
+    matchingRules: result.matchingRules,
+    highlightedCode: result.highlightedCode,
+    docs: result.docs,
+    relatedDiagnostics: result.relatedDiagnostics,
+    relatedApis: result.relatedApis,
+    performanceNotes: result.performanceNotes,
+    securityNotes: result.securityNotes,
+    bestPractices: result.bestPractices,
+    commonMistakes: result.commonMistakes,
+    estimatedFixTime: result.estimatedFixTime,
+    difficulty: result.difficulty,
+    hypotheses: result.hypotheses.map((item) => ({
+      title: item.title,
+      confidence: item.confidence,
+      rootCause: item.rootCause,
+    })),
+  };
+}
+
 function parseLogLineReference(logText: string): number | undefined {
   const match = logText.match(/:(\d+):/);
   if (!match) return undefined;
@@ -153,60 +220,14 @@ export function buildAdvancedAnalysis(
     };
   }
 
-  const staticFindings: StaticFinding[] = result.evidence.map((item) => ({
-    id: item.id === "datastore-no-pcall" ? "nil-datastore-no-pcall" : item.id,
-    category: toStaticCategory(result.selectedHypothesis.title),
-    severity: item.id === "datastore-no-pcall" ? "critical" : toSeverityLabel(item.score),
-    message: item.message,
-    line: item.line,
-    evidence: `score +${item.score}`,
-  }));
+  return toAdvancedAnalyzerOutput(result, logText, codeText, existingFixes);
+}
 
-  const candidateFixes = [
-    ...existingFixes,
-    ...result.hypotheses.flatMap((item) => [item.fixes.minimal, item.fixes.better]),
-    result.fixes.minimal,
-    result.fixes.better,
-    result.fixes.production,
-  ].filter((value, index, arr) => value && arr.indexOf(value) === index);
-
-  const prioritizedFixes = candidateFixes.sort((a, b) => fixPriorityScore(a) - fixPriorityScore(b));
-
-  const errorSymbols = result.highlightedCode
-    .map((item) => item.variable ?? item.property ?? item.functionName)
-    .filter((value): value is string => Boolean(value));
-
-  return {
-    matchStrategy: result.strategy,
-    matchedRuleId: result.family,
-    errorLineMapping: {
-      logLineReference: lineReference,
-      resolvedCodeLine: lineText ? lineReference : result.highlightedCode[0]?.line,
-      codeLineText: lineText ?? result.highlightedCode[0]?.text,
-    },
-    errorSymbols,
-    staticFindings,
-    prioritizedFixes,
-    fixTemplates: buildTemplates(result),
-    patternDatabaseSize: result.knowledgeBaseSize,
-    quickSummary: result.quickSummary,
-    likelyRootCause: result.likelyRootCause,
-    evidence: result.evidence,
-    matchingRules: result.matchingRules,
-    highlightedCode: result.highlightedCode,
-    docs: result.docs,
-    relatedDiagnostics: result.relatedDiagnostics,
-    relatedApis: result.relatedApis,
-    performanceNotes: result.performanceNotes,
-    securityNotes: result.securityNotes,
-    bestPractices: result.bestPractices,
-    commonMistakes: result.commonMistakes,
-    estimatedFixTime: result.estimatedFixTime,
-    difficulty: result.difficulty,
-    hypotheses: result.hypotheses.map((item) => ({
-      title: item.title,
-      confidence: item.confidence,
-      rootCause: item.rootCause,
-    })),
-  };
+export function buildAdvancedAnalysisFromDynamicResult(
+  result: DynamicAnalysisResult,
+  logText: string,
+  codeText: string,
+  existingFixes: string[] = [],
+): AdvancedAnalyzerOutput {
+  return toAdvancedAnalyzerOutput(result, logText, codeText, existingFixes);
 }

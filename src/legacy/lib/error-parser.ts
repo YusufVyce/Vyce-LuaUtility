@@ -1,3 +1,4 @@
+/** @deprecated Legacy analyzer module retained for compatibility only. Do not import in production runtime. */
 import { ROBLOX_INSIGHTS } from "./roblox/insights";
 import { ROBLOX_DEPRECATED } from "./roblox/deprecated";
 import { ROBLOX_PERFORMANCE } from "./roblox/performance";
@@ -5,7 +6,7 @@ import { ROBLOX_SECURITY } from "./roblox/security";
 import { INFINITE_YIELD } from "./roblox/errors/infiniteYield";
 import { ATTEMPT_TO_INDEX_NIL } from "./roblox/errors/attemptToIndexNil";
 import { ATTEMPT_TO_CALL_NIL } from "./roblox/errors/callNil";
-import { INVALID_ARGUMENT } from "./analyzer/roblox/errors/invalidArgument";
+import { INVALID_ARGUMENT } from "../analyzer/roblox/errors/invalidArgument";
 import { ARITHMETIC_ON_NIL } from "./roblox/errors/arithmeticOnNil";
 import { INVALID_MEMBER } from "./roblox/errors/invalidMember";
 import { MODULE_RETURN } from "./roblox/errors/moduleReturn";
@@ -26,19 +27,19 @@ import { INVALID_ENUM } from "./roblox/errors/invalidEnum";
 import { INVALID_KEY } from "./roblox/errors/invalidKey";
 import { STACK_OVERFLOW } from "./roblox/errors/stackOverflow";
 import { C_STACK_OVERFLOW } from "./roblox/errors/cStackOverflow";
-import { ATTEMPT_TO_INDEX_STRING } from "./analyzer/roblox/errors/attemptToIndexString";
-import { ATTEMPT_TO_INDEX_NUMBER } from "./analyzer/roblox/errors/attemptToIndexNumber";
-import { METAMETHOD_YIELD } from "./analyzer/roblox/errors/metamethodYield";
-import { CYCLIC_REFERENCE } from "./analyzer/roblox/errors/cyclicReference";
-import { NOT_A_FUNCTION } from "./analyzer/roblox/errors/notAFunction";
-import { ARGUMENT_NIL } from "./analyzer/roblox/errors/argumentNil";
-import { EXPECTED_IDENTIFIER } from "./analyzer/roblox/errors/expectedIdentifier";
-import { INVALID_SERVICE } from "./analyzer/roblox/errors/invalidService";
-import { DEAD_COROUTINE } from "./analyzer/roblox/errors/deadCoroutine";
-import { INVALID_CLASS_NAME } from "./analyzer/roblox/errors/invalidClassName";
-import { MALFORMED_PATTERN_ERROR } from "./analyzer/roblox/errors/malformedPattern";
-import { CYCLIC_PARENTING } from "./analyzer/roblox/errors/cyclicParenting";
-import { NAMING_TYPO } from "./analyzer/roblox/errors/namingTypo";
+import { ATTEMPT_TO_INDEX_STRING } from "../analyzer/roblox/errors/attemptToIndexString";
+import { ATTEMPT_TO_INDEX_NUMBER } from "../analyzer/roblox/errors/attemptToIndexNumber";
+import { METAMETHOD_YIELD } from "../analyzer/roblox/errors/metamethodYield";
+import { CYCLIC_REFERENCE } from "../analyzer/roblox/errors/cyclicReference";
+import { NOT_A_FUNCTION } from "../analyzer/roblox/errors/notAFunction";
+import { ARGUMENT_NIL } from "../analyzer/roblox/errors/argumentNil";
+import { EXPECTED_IDENTIFIER } from "../analyzer/roblox/errors/expectedIdentifier";
+import { INVALID_SERVICE } from "../analyzer/roblox/errors/invalidService";
+import { DEAD_COROUTINE } from "../analyzer/roblox/errors/deadCoroutine";
+import { INVALID_CLASS_NAME } from "../analyzer/roblox/errors/invalidClassName";
+import { MALFORMED_PATTERN_ERROR } from "../analyzer/roblox/errors/malformedPattern";
+import { CYCLIC_PARENTING } from "../analyzer/roblox/errors/cyclicParenting";
+import { NAMING_TYPO } from "../analyzer/roblox/errors/namingTypo";
 import type {
   Analysis,
   Cause,

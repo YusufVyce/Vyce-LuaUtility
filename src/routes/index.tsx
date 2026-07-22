@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EXAMPLES } from "@/lib/error-parser";
+import { ANALYZER_EXAMPLES } from "@/lib/analyzerExamples";
 import type { AdvancedAnalyzerOutput } from "@/lib/analyzer/advancedRobloxAnalyzer";
 import {
   analyzeErrorAndCode,
@@ -139,7 +139,7 @@ function ErrorParserPage() {
   }
 
   function insertExample(triggerAfter = false) {
-    const ex = EXAMPLES[exampleIndex % EXAMPLES.length];
+    const ex = ANALYZER_EXAMPLES[exampleIndex % ANALYZER_EXAMPLES.length];
     setExampleIndex((i) => i + 1);
     setLogText(ex.error);
     setCodeText(ex.code);

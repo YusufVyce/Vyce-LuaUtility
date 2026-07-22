@@ -66,7 +66,7 @@ function buildNilSignal(context: ExtractedContext, errorLine?: number): RuleSign
   if (context.hasWaitForChild) evidence.push(mkEvidence("waitforchild", "WaitForChild appears in snippet; timing-dependent hierarchy access", 10));
   if (context.requires.length > 0) evidence.push(mkEvidence("require-path", "Module require() chain may return nil or partial export", 16));
   if (context.hasCharacterAdded === false && context.apis.includes("CharacterAdded") === false) {
-    if (Object.values(context.variables).some((value) => /\.Character\b/.test(value))) {
+    if (context.hasCharacterPropertyAccessWithoutSync) {
       evidence.push(mkEvidence("character-race", "Character accessed without CharacterAdded synchronization", 22));
     }
   }
@@ -209,7 +209,7 @@ function buildCharacterSignal(context: ExtractedContext, errorLine?: number): Ru
 function buildWaitSignal(context: ExtractedContext, errorLine?: number): RuleSignal {
   const evidence: Evidence[] = [mkEvidence("wait-apis", "WaitForChild/FindFirstChild usage detected", 14, errorLine)];
   if (context.hasFindFirstChild) evidence.push(mkEvidence("findfirstchild-nil", "FindFirstChild can return nil without timeout semantics", 18));
-  if (context.hasWaitForChild && !/WaitForChild\s*\(\s*['"][^'"]+['"]\s*,\s*\d+/.test(Object.values(context.variables).join("\n") + context.apis.join("\n"))) {
+  if (context.hasWaitForChild && !context.hasWaitForChildTimeout) {
     evidence.push(mkEvidence("waitforchild-timeout", "WaitForChild appears without explicit timeout", 20));
   }
 

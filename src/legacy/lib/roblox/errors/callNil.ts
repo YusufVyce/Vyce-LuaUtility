@@ -2,7 +2,7 @@ import { ROBLOX_INSIGHTS } from "../insights";
 import { ROBLOX_DEPRECATED } from "../deprecated";
 import { ROBLOX_PERFORMANCE } from "../performance";
 import { ROBLOX_SECURITY } from "../security";
-import { enrichAnalysis } from "@/lib/analyzer/contextAnalyzer";
+import { enrichAnalysis } from "../../../analyzer/contextAnalyzer";
 
 import type {
   Analysis,

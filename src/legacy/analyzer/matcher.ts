@@ -1,3 +1,4 @@
+/** @deprecated Legacy analyzer module retained for compatibility only. Do not import in production runtime. */
 import { normalize } from "./normalize";
 import { tokenize } from "./tokenizer";
 import { MALFORMED_PATTERN_ERROR } from "./roblox/errors/malformedPattern";

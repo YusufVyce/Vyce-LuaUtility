@@ -1,3 +1,4 @@
+/** @deprecated Legacy analyzer module retained for compatibility only. Do not import in production runtime. */
 /**
  * Declarative table of Lua/Roblox context heuristics.
  *
