@@ -393,7 +393,7 @@ function ErrorParserPage() {
     tabIndex={-1}
     className="relative z-10 w-full max-w-5xl space-y-6 outline-none"
   >
-    <section className="input-grid items-start">
+    <section className="input-grid items-start h-auto">
       <div className="ep-card result-card space-y-5">
         <div>
           <label
@@ -479,7 +479,7 @@ function ErrorParserPage() {
             </div>
 
             <div
-              className="relative h-auto results-panel"
+              className="relative results-panel self-start h-auto overflow-visible"
               aria-live="polite"
             >
               {result.kind === "idle" && (

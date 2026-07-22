@@ -351,6 +351,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1rem;
+  align-items: start;
 }
 
 .input-grid > * {
@@ -394,6 +395,8 @@
 
 .results-panel {
   height: auto;
+  align-self: start;
+  overflow: visible;
 }
 
 .results-panel .analysis-panel-card {
